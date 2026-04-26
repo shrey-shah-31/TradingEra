@@ -12,19 +12,19 @@ services:
       - key: PORT
         value: 5000
       - key: MONGOD_URL
-        sync: false          # 👈 enter manually in Render dashboard
+        sync: false
       - key: JWT_SECRET
-        generateValue: true  # 👈 auto‑generated secret
+        generateValue: true
       - key: FRONTEND_URL
         value: https://tradingera.onrender.com
 
   # Frontend Static Site
-  - type: static            # ✅ changed from static_site
+  - type: static_site          # ✅ correct type
     name: tradingera-frontend
     plan: free
     buildCommand: cd frontend && npm install && npm run build
     publishPath: frontend/dist
     routes:
       - type: rewrite
-        source: /(.*)       # ✅ indented as properties of the route
+        source: /(.*)
         destination: /index.html
