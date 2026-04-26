@@ -1,0 +1,154 @@
+@import "tailwindcss";
+
+/* ── KINETIC Design System — "The Kinetic Monolith" ─────────────────────── */
+@theme {
+  /* Fonts */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-headline: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* Surface Hierarchy */
+  --color-surface:                  #111417;
+  --color-surface-container-lowest: #0b0e11;
+  --color-surface-container-low:    #191c1f;
+  --color-surface-container:        #1d2023;
+  --color-surface-container-high:   #272a2e;
+  --color-surface-container-highest:#323538;
+  --color-surface-bright:           #37393d;
+
+  /* Brand / Action */
+  --color-primary:           #adc6ff;
+  --color-primary-container: #4b8eff;
+  --color-on-primary:        #002e69;
+
+  /* Success (Buy/Long) */
+  --color-secondary:         #3fe397;
+  --color-secondary-fixed:   #60feae;
+  --color-secondary-fixed-dim:#3be194;
+
+  /* Danger (Sell/Short) */
+  --color-tertiary:          #ffb3b5;
+  --color-tertiary-fixed-dim:#ffb3b5;
+
+  /* Text */
+  --color-on-surface:        #e1e2e7;
+  --color-on-surface-variant:#c1c6d7;
+  --color-outline:           #8b90a0;
+  --color-outline-variant:   #414755;
+
+  /* Error */
+  --color-error:             #ffb4ab;
+
+  /* Legacy aliases (keep existing code working) */
+  --color-era-bg:      #111417;
+  --color-era-surface: #1d2023;
+  --color-era-elevated:#272a2e;
+  --color-era-border:  rgba(65, 71, 85, 0.4);
+  --color-era-muted:   #8b90a0;
+  --color-era-text:    #e1e2e7;
+  --color-era-accent:  #adc6ff;
+  --color-era-accent2: #4b8eff;
+  --color-era-success: #3fe397;
+  --color-era-danger:  #ffb3b5;
+}
+
+@layer base {
+  html {
+    @apply antialiased scroll-smooth;
+  }
+
+  body {
+    background-color: #111417;
+    color: #e1e2e7;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100svh;
+  }
+
+  /* Slim custom scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: #111417; }
+  ::-webkit-scrollbar-thumb { background: #323538; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #414755; }
+}
+
+/* ── Typography helpers ──────────────────────────────────────────────────── */
+.font-headline { font-family: 'Manrope', sans-serif; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ── Glassmorphism (floating overlays only) ──────────────────────────────── */
+.glass {
+  background: rgba(29, 32, 35, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ── Gradient CTA ────────────────────────────────────────────────────────── */
+.btn-primary {
+  background: linear-gradient(135deg, #adc6ff, #4b8eff);
+  color: #002e69;
+  font-weight: 700;
+}
+.btn-primary:hover { opacity: 0.9; }
+
+/* ── Ambient background glows ────────────────────────────────────────────── */
+.glow-primary {
+  position: fixed; pointer-events: none; z-index: -1; border-radius: 50%;
+  filter: blur(120px);
+  background: rgba(173, 198, 255, 0.04);
+}
+.glow-secondary {
+  position: fixed; pointer-events: none; z-index: -1; border-radius: 50%;
+  filter: blur(100px);
+  background: rgba(63, 227, 151, 0.04);
+}
+
+/* ── Sidebar active indicator ────────────────────────────────────────────── */
+.nav-active {
+  background: #1d2023;
+  color: #adc6ff;
+  border-left: 3px solid #adc6ff;
+}
+.nav-inactive {
+  color: #8b90a0;
+}
+.nav-inactive:hover {
+  background: #1d2023;
+  color: #adc6ff;
+}
+
+/* ── Text gradient (legacy) ──────────────────────────────────────────────── */
+.text-gradient {
+  background: linear-gradient(90deg, #adc6ff, #4b8eff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── Light theme (minimal override) ─────────────────────────────────────── */
+html.light body {
+  background-color: #f0f2f5;
+  color: #1d2023;
+}
+html.light .glass {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(65, 71, 85, 0.15);
+}
+
+/* ── Animations ──────────────────────────────────────────────────────────── */
+@keyframes spin  { to { transform: rotate(360deg); } }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+@keyframes ping  { 75%,100% { transform: scale(2); opacity: 0; } }
+
+/* ── Replay mode (AlgoTrading) ───────────────────────────────────────────── */
+input[type="range"].replay-seek {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(173, 198, 255, 0.2);
+  outline: none;
+  accent-color: #adc6ff;
+  cursor: pointer;
+}

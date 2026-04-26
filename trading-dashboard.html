@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pro Trading Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0A0F1A;
+            --card-bg: #0F172A;
+            --card-bg-glass: rgba(15, 23, 42, 0.7);
+            --border-color: #1E293B;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --accent-gold: #F0B90B;
+            --accent-gold-hover: #Fcd34d;
+            --bid-green: #10B981;
+            --ask-red: #EF4444;
+            --bg-hover: #1E293B;
+            --font-main: 'Inter', sans-serif;
+            --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            overscroll-behavior: none;
+        }
+
+        /* --- HEADER --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+        }
+        
+        .header-left, .header-right { display: flex; align-items: center; gap: 24px; }
+        
+        .ticker-symbol {
+            font-size: 1.25rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ticker-symbol i { color: var(--accent-gold); }
+
+        .price-box {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+        .price-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;}
+        .price-val { font-family: var(--font-mono); font-size: 1.1rem; font-weight: 600; transition: color 0.3s; }
+        .bid-price { color: var(--bid-green); }
+        .ask-price { color: var(--ask-red); }
+
+        .header-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+        .header-stats span { color: var(--text-main); font-family: var(--font-mono); }
+
+        .demo-btn {
+            background: rgba(240, 185, 11, 0.1);
+            color: var(--accent-gold);
+            border: 1px solid var(--accent-gold);
+            padding: 6px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .demo-btn:hover {
+            background: var(--accent-gold);
+            color: #000;
+        }
+
+        /* --- MAIN LAYOUT --- */
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- LEFT COLUMN: Toolbar + Chart --- */
+        .left-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Drawing Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .toolbar::-webkit-scrollbar { display: none; }
+        
+        .toolbar-group {
+            display: flex;
+            gap: 4px;
+            padding-right: 12px;
+            border-right: 1px solid var(--border-color);
+            align-items: center;
+        }
+        .toolbar-group:last-child { border-right: none; }
+        
+        .tool-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .tool-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+        .tool-btn.active { background: rgba(240, 185, 11, 0.15); color: var(--accent-gold); }
+        
+        /* Tooltip Helper */
+        .tool-btn[data-tip] { position: relative; }
+        .tool-btn[data-tip]:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            top: 42px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* Chart Area */
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+            background: #000; /* Deep black behind canvas */
+            cursor: crosshair;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        /* --- RIGHT SIDEBAR --- */
+        .right-sidebar {
+            width: 320px;
+            background: var(--card-bg-glass);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .right-sidebar::-webkit-scrollbar { width: 6px; }
+        .right-sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+
+        .sidebar-section {
+            padding: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .section-title {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        /* Button Grids */
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .side-btn {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .side-btn:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+        .side-btn i { color: var(--accent-gold); width: 14px; text-align: center; }
+
+        /* Promo Card */
+        .promo-card {
+            background: linear-gradient(135deg, rgba(240,185,11,0.15) 0%, rgba(0,0,0,0) 100%);
+            border: 1px solid rgba(240, 185, 11, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .promo-title { font-size: 1.1rem; font-weight: 700; color: var(--accent-gold); margin-bottom: 8px; }
+        .promo-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4; }
+        .promo-btn {
+            background: var(--accent-gold);
+            color: #000;
+            border: none;
+            padding: 10px 0;
+            width: 100%;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .promo-btn:hover { transform: scale(1.02); }
+
+        /* Weather / Search */
+        .widget-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0,0,0,0.2);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        .weather { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 0.9rem; }
+        .weather i { color: #Fcd34d; }
+        .search-icon { color: var(--text-muted); cursor: pointer; }
+
+        /* Disclaimer */
+        .disclaimer {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            padding: 20px;
+            line-height: 1.5;
+            text-align: justify;
+        }
+
+        /* Hover Price Tooltip */
+        #priceTooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border: 1px solid var(--accent-gold);
+            z-index: 100;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .right-sidebar { display: none; }
+            .header-stats { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-left">
+            <div class="ticker-symbol">
+                <i class="fab fa-bitcoin"></i> BTCUSD
+            </div>
+            <div class="price-box">
+                <span class="price-label">Sell</span>
+                <span class="price-val ask-price" id="hdr-ask">64,231.00</span>
+            </div>
+            <div class="price-box">
+                <span class="price-label">Buy</span>
+                <span class="price-val bid-price" id="hdr-bid">64,230.50</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="header-stats">
+                <div>Vol: <span>12.4K</span></div>
+                <div>Ticks: <span>894</span></div>
+                <div>UT Bot: <span style="color:var(--accent-gold)"><i class="fa fa-bell"></i> 3 Alerts</span></div>
+            </div>
+            <button class="demo-btn" onclick="executeDemo()"><i class="fa fa-play"></i> Demo</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- Left: Toolbars + Chart -->
+        <div class="left-col">
+            <!-- Drawing Toolbar -->
+            <div class="toolbar" id="toolbar">
+                <div class="toolbar-group">
+                    <button class="tool-btn active" data-tool="pointer" data-tip="Cursor"><i class="fa fa-mouse-pointer"></i></button>
+                </div>
+                <!-- Lines -->
+                <div class="toolbar-group">
+                    <button class="tool-btn" data-tool="trendline" data-tip="Trendline"><i class="fa fa-chart-line"></i></button>
+                    <button class="tool-btn" data-tool="horizontal" data-tip="Horizontal Line"><i class="fa fa-minus"></i></button>
+                    <button class="tool-btn" data-tool="vertical" data-tip="Vertical Line"><i class="fa fa-grip-lines-vertical"></i></button>
+                    <button class="tool-btn" data-tool="ray" data-tip="Ray"><i class="fa fa-external-link-alt"></i></button>
+                </div>
+                <!-- Shapes -->
+                <div class="toolbar-group">
+                    <button class="tool-btn" data-tool="rect" data-tip="Rectangle"><i class="fa fa-square-full" style="font-size:0.8rem"></i></button>
+                    <button class="tool-btn" data-tool="circle" data-tip="Circle"><i class="fa fa-circle" style="font-size:0.8rem"></i></button>
+                    <button class="tool-btn" data-tool="arrow" data-tip="Arrow"><i class="fa fa-arrow-right"></i></button>
+                </div>
+                <!-- Draw & Math -->
+                <div class="toolbar-group">
+                    <button class="tool-btn" data-tool="brush" data-tip="Brush"><i class="fa fa-paint-brush"></i></button>
+                    <button class="tool-btn" data-tool="highlighter" data-tip="Highlighter"><i class="fa fa-highlighter"></i></button>
+                    <button class="tool-btn" data-tool="fib" data-tip="Fibonacci Retracement"><i class="fa fa-stream"></i></button>
+                </div>
+                <!-- Actions -->
+                <div class="toolbar-group" style="margin-left: auto;">
+                    <button class="tool-btn" data-tool="eraser" data-tip="Eraser (Click to delete)"><i class="fa fa-eraser"></i></button>
+                    <button class="tool-btn" data-tool="clear" data-tip="Clear All Canvas"><i class="fa fa-trash"></i></button>
+                </div>
+            </div>
+
+            <!-- Canvas Wrapper -->
+            <div class="chart-wrapper" id="chart-wrapper">
+                <canvas id="chartCanvas"></canvas>
+                <div id="priceTooltip">64,230.50</div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="right-sidebar">
+            <div class="sidebar-section">
+                <div class="section-title">TEXT & NOTES</div>
+                <div class="btn-grid">
+                    <button class="side-btn" onclick="setSideTool('text')"><i class="fa fa-font"></i> Text</button>
+                    <button class="side-btn" onclick="setSideTool('anchored_text')"><i class="fa fa-anchor"></i> Anchored</button>
+                    <button class="side-btn" onclick="setSideTool('note')"><i class="fa fa-sticky-note"></i> Note</button>
+                    <button class="side-btn" onclick="setSideTool('price_note')"><i class="fa fa-tag"></i> Price Note</button>
+                    <button class="side-btn" onclick="setSideTool('pin')"><i class="fa fa-map-pin"></i> Pin</button>
+                    <button class="side-btn" onclick="setSideTool('flag')"><i class="fa fa-flag"></i> Flag Mark</button>
+                    <button class="side-btn" onclick="setSideTool('callout')"><i class="fa fa-comment-dots"></i> Callout</button>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="section-title">CONTENT & WIDGETS</div>
+                <div class="btn-grid" style="margin-bottom: 20px;">
+                    <button class="side-btn"><i class="fa fa-image"></i> Image</button>
+                    <button class="side-btn"><i class="fa fa-paper-plane"></i> Post</button>
+                    <button class="side-btn"><i class="fa fa-lightbulb"></i> Idea</button>
+                </div>
+
+                <div class="widget-box">
+                    <div class="weather"><i class="fa fa-sun"></i> 34°C Sunny</div>
+                    <i class="fa fa-search search-icon"></i>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <div class="promo-card">
+                    <div class="promo-title">Flat 66% Discount</div>
+                    <div class="promo-desc">Upgrade to Pro+ and unlock real-time precise tick data and advanced indicators.</div>
+                    <button class="promo-btn">Trade Now</button>
+                </div>
+            </div>
+
+            <div class="disclaimer">
+                <strong>Disclaimer:</strong> Trading cryptocurrencies involves significant risk and can result in the loss of your invested capital. You should not invest more than you can afford to lose. The simulated market data provided on this platform is for demonstration purposes only.
+            </div>
+        </div>
+
+    </div>
+
+<script>
+/**
+ * TRADING DASHBOARD ENGINE
+ * Vanilla JS Canvas implementation with drawing state management,
+ * randomized simulated market ticks, and interactive annotations.
+ */
+
+const canvas = document.getElementById('chartCanvas');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('priceTooltip');
+const wrapper = document.getElementById('chart-wrapper');
+
+// State
+let width, height;
+let currentTool = 'pointer';
+let drawings = [];
+let isDrawing = false;
+let startPos = null;
+let currentPos = null;
+let currentPath = [];
+
+// Simulation Data
+let basePrice = 64230;
+let chartData = [];
+// Generate initial 120 points of data
+let _p = basePrice - 500;
+for(let i=0; i<120; i++) {
+    _p += (Math.random() - 0.5) * 60;
+    chartData.push(_p);
+}
+let yMin = Math.min(...chartData) - 100;
+let yMax = Math.max(...chartData) + 100;
+
+// Resize Handler
+function resizeInit() {
+    width = wrapper.clientWidth;
+    height = wrapper.clientHeight;
+    // Handle High-DPI screens
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
+    drawCore();
+}
+window.addEventListener('resize', resizeInit);
+
+// Coordinate Mapper
+function mapX(index) { return (index / (chartData.length - 1)) * (width - 60); }
+function mapY(price) { return height - 40 - ((price - yMin) / (yMax - yMin)) * (height - 80); }
+function unmapY(y) { return yMin + ((height - 40 - y) / (height - 80)) * (yMax - yMin); }
+
+// --- DRAWING ENGINE ---
+
+function drawCore() {
+    ctx.clearRect(0, 0, width, height);
+    
+    // 1. Grid & Axes
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#1E293B';
+    ctx.fillStyle = '#64748B';
+    ctx.font = "11px 'SFMono-Regular', monospace";
+    ctx.textAlign = "left";
+    
+    // Y-Axis Horizontal Lines
+    let steps = 8;
+    for(let i=0; i<=steps; i++) {
+        let y = 40 + i * ((height-80)/steps);
+        let p = unmapY(y);
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width-60, y); ctx.stroke();
+        ctx.fillText(p.toFixed(2), width - 55, y + 4);
+    }
+    
+    // 2. Volume Bars (Bottom)
+    ctx.globalAlpha = 0.3;
+    for(let i=0; i<chartData.length; i++) {
+        let x = mapX(i);
+        let barH = 20 + Math.random() * 50;
+        ctx.fillStyle = (i>0 && chartData[i] < chartData[i-1]) ? '#EF4444' : '#10B981';
+        ctx.fillRect(x - 2, height - barH - 20, 4, barH);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // 3. Price Area Chart (Stunning Style)
+    ctx.beginPath();
+    ctx.moveTo(mapX(0), mapY(chartData[0]));
+    for(let i=1; i<chartData.length; i++) {
+        ctx.lineTo(mapX(i), mapY(chartData[i]));
+    }
+    
+    // Glow and Stroke
+    ctx.strokeStyle = '#F0B90B';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(240, 185, 11, 0.4)';
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    
+    // Area Gradient
+    ctx.lineTo(mapX(chartData.length-1), height-20);
+    ctx.lineTo(mapX(0), height-20);
+    ctx.closePath();
+    let grad = ctx.createLinearGradient(0, 0, 0, height);
+    grad.addColorStop(0, 'rgba(240, 185, 11, 0.25)');
+    grad.addColorStop(1, 'rgba(240, 185, 11, 0.0)');
+    ctx.fillStyle = grad;
+    ctx.shadowBlur = 0; // reset
+    ctx.fill();
+
+    // Current Price Line
+    let currP = chartData[chartData.length-1];
+    let currY = mapY(currP);
+    ctx.beginPath(); ctx.moveTo(0, currY); ctx.lineTo(width-60, currY);
+    ctx.setLineDash([5, 5]);
+    ctx.strokeStyle = '#10B981';
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Current Price Badge
+    ctx.fillStyle = '#10B981';
+    ctx.fillRect(width-60, currY - 10, 60, 20);
+    ctx.fillStyle = '#000';
+    ctx.fillText(currP.toFixed(2), width-55, currY + 4);
+
+    // 4. Render User Drawings
+    for(let d of drawings) renderShape(d);
+
+    // 5. Render Active Preview
+    if(isDrawing && startPos && currentPos) {
+        ctx.globalAlpha = 0.7;
+        renderShape({ type: currentTool, start: startPos, end: currentPos, points: currentPath });
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+// Draw Individual Shapes
+function renderShape(d) {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = d.color || '#38BDF8'; // Default neon blue annotation
+    ctx.fillStyle = d.color || '#38BDF8';
+
+    if (d.type === 'brush' || d.type === 'highlighter') {
+        if(!d.points || d.points.length===0) return;
+        ctx.beginPath();
+        ctx.moveTo(d.points[0].x, d.points[0].y);
+        for(let p of d.points) ctx.lineTo(p.x, p.y);
+        ctx.lineWidth = d.type==='highlighter' ? 12 : 2;
+        ctx.globalAlpha = d.type==='highlighter' ? 0.3 : 1.0;
+        ctx.stroke();
+        ctx.globalAlpha = 1.0;
+    } 
+    else if (d.type === 'trendline') {
+        ctx.beginPath(); ctx.moveTo(d.start.x, d.start.y); ctx.lineTo(d.end.x, d.end.y); ctx.stroke();
+    }
+    else if (d.type === 'horizontal') {
+        ctx.beginPath(); ctx.moveTo(0, d.start.y); ctx.lineTo(width, d.start.y); ctx.stroke();
+    }
+    else if (d.type === 'vertical') {
+        ctx.beginPath(); ctx.moveTo(d.start.x, 0); ctx.lineTo(d.start.x, height); ctx.stroke();
+    }
+    else if (d.type === 'ray') {
+        let dx = d.end.x - d.start.x;
+        let dy = d.end.y - d.start.y;
+        ctx.beginPath(); ctx.moveTo(d.start.x, d.start.y); ctx.lineTo(d.start.x + dx*50, d.start.y + dy*50); ctx.stroke();
+    }
+    else if (d.type === 'rect') {
+        ctx.globalAlpha = 0.2;
+        ctx.fillRect(d.start.x, d.start.y, d.end.x - d.start.x, d.end.y - d.start.y);
+        ctx.globalAlpha = 1.0;
+        ctx.strokeRect(d.start.x, d.start.y, d.end.x - d.start.x, d.end.y - d.start.y);
+    }
+    else if (d.type === 'circle') {
+        let r = Math.hypot(d.end.x - d.start.x, d.end.y - d.start.y);
+        ctx.beginPath(); ctx.arc(d.start.x, d.start.y, r, 0, Math.PI*2); 
+        ctx.globalAlpha = 0.2; ctx.fill(); ctx.globalAlpha = 1.0; ctx.stroke();
+    }
+    else if (d.type === 'arrow') {
+        drawArrow(ctx, d.start.x, d.start.y, d.end.x, d.end.y);
+    }
+    else if (d.type === 'fib') {
+        drawFib(d.start, d.end);
+    }
+    else if (['text', 'note', 'price_note', 'anchored_text'].includes(d.type)) {
+        ctx.font = "14px Inter";
+        let tw = ctx.measureText(d.text).width;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.8)';
+        ctx.fillRect(d.start.x, d.start.y - 20, tw + 20, 30);
+        ctx.strokeRect(d.start.x, d.start.y - 20, tw + 20, 30);
+        ctx.fillStyle = '#FFF';
+        ctx.fillText(d.text, d.start.x + 10, d.start.y);
+    }
+    else if (['pin', 'flag', 'callout'].includes(d.type)) {
+        ctx.font = "24px 'Font Awesome 6 Free'";
+        ctx.fontWeight = "900";
+        let icon = d.type === 'pin' ? '\uf08d' : (d.type === 'flag' ? '\uf024' : '\uf4ad');
+        ctx.fillStyle = '#F0B90B';
+        ctx.fillText(icon, d.start.x, d.start.y);
+    }
+}
+
+function drawArrow(ctx, fromx, fromy, tox, toy) {
+    let headlen = 10; 
+    let dx = tox - fromx;
+    let dy = toy - fromy;
+    let angle = Math.atan2(dy, dx);
+    ctx.beginPath();
+    ctx.moveTo(fromx, fromy);
+    ctx.lineTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+    ctx.moveTo(tox, toy);
+    ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+    ctx.stroke();
+}
+
+function drawFib(s, e) {
+    let levels = [0, 0.236, 0.382, 0.5, 0.618, 1];
+    let diff = e.y - s.y;
+    ctx.lineWidth = 1;
+    ctx.font = "10px Inter";
+    levels.forEach(lv => {
+        let ly = s.y + diff * lv;
+        ctx.setLineDash(lv===0||lv===1 ? [] : [4,4]);
+        ctx.strokeStyle = lv===0||lv===1 ? '#F0B90B' : '#64748B';
+        ctx.beginPath(); ctx.moveTo(s.x, ly); ctx.lineTo(s.x + 300, ly); ctx.stroke();
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.fillText((lv*100).toFixed(1) + "%", s.x + 305, ly + 3);
+    });
+    ctx.setLineDash([]);
+}
+
+// --- INTERACTION LOGIC ---
+
+function getPos(e) {
+    let rect = canvas.getBoundingClientRect();
+    if(e.touches && e.touches.length > 0) {
+        return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function interactStart(e) {
+    e.preventDefault();
+    if(currentTool === 'pointer') return;
+    
+    let pos = getPos(e);
+
+    if (currentTool === 'eraser') {
+        if(drawings.length > 0) drawings.pop(); // Remove latest drawing constraint
+        drawCore();
+        return;
+    }
+
+    if (['text', 'note', 'price_note', 'anchored_text'].includes(currentTool)) {
+        let txt = prompt(`Enter ${currentTool.replace('_',' ')} text:`);
+        if(txt) {
+            drawings.push({ type: currentTool, start: pos, end: pos, text: txt });
+            drawCore();
+        }
+        currentTool = 'pointer'; // Reset after text
+        updateToolbarUI();
+        return;
+    }
+
+    if (['pin', 'flag', 'callout'].includes(currentTool)) {
+        drawings.push({ type: currentTool, start: pos, end: pos });
+        drawCore();
+        currentTool = 'pointer';
+        updateToolbarUI();
+        return;
+    }
+
+    isDrawing = true;
+    startPos = pos;
+    currentPos = pos;
+    if(['brush', 'highlighter'].includes(currentTool)) currentPath = [pos];
+}
+
+function interactMove(e) {
+    let pos = getPos(e);
+    
+    // Hover Tooltip logic
+    if (currentTool === 'pointer' && !isDrawing) {
+        let priceHover = unmapY(pos.y).toFixed(2);
+        tooltip.style.left = (pos.x + 15) + 'px';
+        tooltip.style.top = (pos.y + 15) + 'px';
+        tooltip.innerText = priceHover;
+        tooltip.style.opacity = 1;
+        // Crosshair styling preview
+        drawCore();
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+        ctx.setLineDash([2,2]);
+        ctx.beginPath(); ctx.moveTo(0, pos.y); ctx.lineTo(width, pos.y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pos.x, 0); ctx.lineTo(pos.x, height); ctx.stroke();
+        ctx.setLineDash([]);
+    } else {
+        tooltip.style.opacity = 0;
+    }
+
+    if(!isDrawing) return;
+    e.preventDefault();
+    currentPos = pos;
+    if(['brush', 'highlighter'].includes(currentTool)) currentPath.push(pos);
+    drawCore();
+}
+
+function interactEnd(e) {
+    if(!isDrawing) return;
+    isDrawing = false;
+    
+    if(['brush', 'highlighter'].includes(currentTool)) {
+        drawings.push({ type: currentTool, points: [...currentPath] });
+    } else {
+        drawings.push({ type: currentTool, start: startPos, end: currentPos });
+    }
+    
+    // Auto revert to pointer after drawing (optional, standard in some charts)
+    // currentTool = 'pointer'; 
+    // updateToolbarUI();
+    drawCore();
+}
+
+canvas.addEventListener('mousedown', interactStart);
+canvas.addEventListener('mousemove', interactMove);
+window.addEventListener('mouseup', interactEnd);
+
+canvas.addEventListener('touchstart', interactStart, {passive: false});
+canvas.addEventListener('touchmove', interactMove, {passive: false});
+window.addEventListener('touchend', interactEnd);
+
+// Context Menu (Long press / Right Click Tooltip override)
+canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    let p = unmapY(getPos(e).y);
+    alert(`Current Level: ${p.toFixed(2)}`);
+});
+
+// --- TOOLBAR & UI INTEGRATION ---
+
+const toolBtns = document.querySelectorAll('.tool-btn[data-tool]');
+toolBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+        let t = btn.getAttribute('data-tool');
+        if(t === 'clear') { drawings = []; drawCore(); return; }
+        currentTool = t;
+        updateToolbarUI();
+    });
+});
+
+function setSideTool(tool) {
+    currentTool = tool;
+    updateToolbarUI();
+    alert(`Click anywhere on chart to place: ${tool.replace('_', ' ')}`);
+}
+
+function updateToolbarUI() {
+    toolBtns.forEach(b => b.classList.remove('active'));
+    let activeBtn = document.querySelector(`.tool-btn[data-tool="${currentTool}"]`);
+    if(activeBtn) activeBtn.classList.add('active');
+}
+
+// --- LIVE DATA TICK SIMULATION ---
+
+setInterval(() => {
+    // Generate random tick
+    let change = (Math.random() - 0.48) * 8; 
+    let newPrice = chartData[chartData.length-1] + change;
+    chartData.push(newPrice);
+    chartData.shift(); // Keep array size constant for continuous scroll effect
+
+    // Update Header labels
+    document.getElementById('hdr-ask').innerText = (newPrice + 0.5).toFixed(2);
+    document.getElementById('hdr-bid').innerText = newPrice.toFixed(2);
+    
+    // Add brief color flash effect
+    document.getElementById('hdr-ask').style.color = change > 0 ? '#10B981' : '#EF4444';
+    setTimeout(() => document.getElementById('hdr-ask').style.color = 'var(--ask-red)', 500);
+
+    drawCore();
+}, 3000); // Update every 3 seconds
+
+// --- Extras: Demo Pre-fill ---
+function executeDemo() {
+    drawings = [
+        { type: 'trendline', start: {x: 100, y: height-100}, end: {x: width/2, y: 150}, color: '#F0B90B' },
+        { type: 'rect', start: {x: 300, y: 200}, end: {x: 450, y: 350}, color: '#8B5CF6' },
+        { type: 'text', start: {x: width/2 + 20, y: 130}, text: 'Resistance Zone', color: '#FFF' },
+        { type: 'fib', start: {x: 50, y: Math.max(100, height-250)}, end: {x: 50, y: 150} }
+    ];
+    drawCore();
+}
+
+// Boot up
+resizeInit();
+
+</script>
+</body>
+</html>
