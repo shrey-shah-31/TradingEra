@@ -12,16 +12,15 @@ services:
       - key: PORT
         value: 5000
       - key: MONGO_URI
-        sync: false # Set this in Render Dashboard (e.g., MongoDB Atlas)
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://tradingera.onrender.com # Update this after frontend is deployed
+        value: https://tradingera.onrender.com
 
   # Frontend Static Site
-  - type: static
+  - type: static_site
     name: tradingera-frontend
-    env: static
     plan: free
     buildCommand: cd frontend && npm install && npm run build
     publishPath: frontend/dist
