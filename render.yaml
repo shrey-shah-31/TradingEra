@@ -11,7 +11,7 @@ services:
         value: 20
       - key: PORT
         value: 5000
-      - key: MONGOD_URL
+      - key: MONGO_URI
         sync: false
       - key: JWT_SECRET
         generateValue: true
@@ -19,7 +19,7 @@ services:
         value: https://tradingera.onrender.com
 
   # Frontend Static Site
-  - type: static_site          # ✅ correct type
+  - type: static_site
     name: tradingera-frontend
     plan: free
     buildCommand: cd frontend && npm install && npm run build
